@@ -1,9 +1,10 @@
-// spell-checker: ignore bottomleft moveend
+// spell-checker: ignore bottomleft moveend onenote
 import { coordinateOfImage } from "./coordinate-of-image";
 import { addStyle, waitElementLoaded } from "./document-extensions";
 import { lonLatToAddress } from "./gsi-reverse-geocoder";
 import { AsyncOptions, cancelToReject, sleep } from "./standard-extensions";
 import { imageFileToDataUrl } from "./image-file-to-data-url";
+import { createAndLoginOneNoteClient } from "./onenote-client";
 
 const L = window.L;
 
@@ -23,6 +24,7 @@ const Names = Object.freeze({
     dropZone: `${namespace}-drop-zone`,
     dragOver: `${namespace}-drag-over`,
     mainPinPopup: `${namespace}-main-pin-popup`,
+    oneNoteLoginButton: `${namespace}-one-note-login-button`,
 });
 
 const css = `
@@ -86,12 +88,16 @@ const css = `
     .${Names.mainPinPopup} {
         text-align: center;
     }
+    .${Names.oneNoteLoginButton} {
+        background: #20A8B1;
+        color: white;
+        padding: 0.5rem;
+        border-radius: 0.3rem;
+        box-shadow: 0 0 0.5rem black;
+    }
 `;
 
-async function searchCoordinate(
-    searchText: string,
-    _option?: Readonly<AsyncOptions>
-) {
+function parseCoordinate(searchText: string) {
     const match = searchText.match(
         /(?<latitude>\d+(\.\d*)?)(\s+|\s*,\s*)(?<longitude>\d+(\.\d*)?)/
     );
@@ -113,14 +119,17 @@ interface Settings {
 let itemCount = 0;
 function put(
     { outputList }: Terminal,
-    message: string,
+    message: string | HTMLElement,
     { removeDeray = 5000, maxCount = 5 } = {}
 ) {
-    const item = (
-        <li class={Names.toastItem}>
-            <input value={message} />
-        </li>
-    );
+    const item =
+        typeof message === "string" ? (
+            <li class={Names.toastItem}>
+                <input value={message} />
+            </li>
+        ) : (
+            message
+        );
     outputList.append(item);
     itemCount++;
     handleAsyncError(
@@ -171,18 +180,55 @@ async function waitAndExecuteCommand(
 }
 async function executeCommand(
     terminal: Terminal,
-    value: string,
+    command: string,
     options?: Readonly<AsyncOptions>
 ) {
-    const coordinate = await searchCoordinate(value, options);
-
-    if (!coordinate) {
-        return put(terminal, `${value} の座標が見つかりませんでした。`);
+    const coordinate = parseCoordinate(command);
+    if (coordinate) {
+        return await moveTo(terminal, coordinate);
     }
-
-    // 親地図を指定した座標に移動
-    await moveTo(terminal, coordinate);
+    return await executeExpression(terminal, command, options);
 }
+async function executeExpression(
+    terminal: Terminal,
+    source: string,
+    options?: Readonly<AsyncOptions>
+) {
+    const command = source.trim().toLocaleLowerCase();
+    if (command === "waypoint-list" || command === "wl") {
+        return await showWaypointList(terminal, options);
+    }
+}
+async function showWaypointList(
+    terminal: Terminal,
+    _options?: Readonly<AsyncOptions>
+) {
+    terminal.put;
+    const client = await createAndLoginOneNoteClient(() => {
+        const button = (
+            <button class={Names.oneNoteLoginButton}>ログイン</button>
+        );
+        put(terminal, button);
+        return button;
+    });
+    put(terminal, "ノートブック一覧");
+    const notebooks = await client.notebooks();
+    for (const notebook of notebooks) {
+        put(terminal, notebook.displayName ?? notebook.id);
+    }
+    const notebook0 = notebooks[0];
+    if (notebook0) {
+        put(
+            terminal,
+            `${notebook0.displayName ?? notebook0.id} のセクション一覧`
+        );
+        const sections = await client.sectionsInNotebook(notebook0.id);
+        for (const section of sections) {
+            put(terminal, section.displayName ?? section.id);
+        }
+    }
+}
+
 function createAsyncCancelScope() {
     let lastCancel = new AbortController();
     return (process: (signal: AbortSignal) => Promise<void>) => {
@@ -307,7 +353,7 @@ class Terminal extends L.Control {
         });
         return terminalElement;
     }
-    put(message: string, options?: Parameters<typeof put>[2]) {
+    put(message: string | HTMLElement, options?: Parameters<typeof put>[2]) {
         put(this, message, options);
     }
 }

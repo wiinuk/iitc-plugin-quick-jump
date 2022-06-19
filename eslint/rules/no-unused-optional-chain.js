@@ -2,7 +2,12 @@
 const tsutils = require("tsutils");
 const ts = require("typescript");
 
-const nullOrUndefinedTypeFlag = ts.TypeFlags.Null | ts.TypeFlags.Undefined;
+const nullOrUndefinedLikeTypeFlag =
+    ts.TypeFlags.Null |
+    ts.TypeFlags.Undefined |
+    ts.TypeFlags.Unknown |
+    ts.TypeFlags.Any;
+
 /**
  * @param {ts.TypeChecker} checker
  * @param {ts.Node} node
@@ -10,7 +15,7 @@ const nullOrUndefinedTypeFlag = ts.TypeFlags.Null | ts.TypeFlags.Undefined;
 const isNullableType = (checker, node) => {
     const nodeType = checker.getTypeAtLocation(node);
     for (const t of tsutils.unionTypeParts(checker.getApparentType(nodeType))) {
-        if (t.flags & nullOrUndefinedTypeFlag) return true;
+        if (t.flags & nullOrUndefinedLikeTypeFlag) return true;
     }
     return false;
 };

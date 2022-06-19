@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/wiinuk/iitc-plugin-quick-jump#readme",
   "devDependencies": {
+    "@microsoft/microsoft-graph-types": "^2.20.0",
     "@types/jest": "^27.0.3",
     "@types/leaflet": "^1.7.9",
     "@types/tampermonkey": "^4.0.5",
@@ -46,8 +47,11 @@
     "fsevents": "^2.3.2"
   },
   "dependencies": {
+    "@azure/msal-browser": "^2.24.0",
+    "@microsoft/microsoft-graph-client": "^3.0.2",
     "exifreader": "^4.5.0",
     "heic2any": "^0.0.3",
+    "isomorphic-fetch": "^3.0.0",
     "jimp": "^0.16.1",
     "tslib": "^2.3.1"
   }

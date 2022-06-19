@@ -17,6 +17,9 @@ const isFunctionType = (checker, symbol, location) => {
     return false;
 };
 
+const promiseLikeTypeFlag =
+    ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Object;
+
 /**
  * @param {ts.TypeChecker} checker
  * @param {ts.Node} node
@@ -24,6 +27,8 @@ const isFunctionType = (checker, symbol, location) => {
 const isPromiseLike = (checker, node) => {
     const nodeType = checker.getTypeAtLocation(node);
     for (const t of tsutils.unionTypeParts(checker.getApparentType(nodeType))) {
+        if (t.flags & promiseLikeTypeFlag) return true;
+
         // then プロパティがあるか
         const then = t.getProperty("then");
         if (then === undefined) {
